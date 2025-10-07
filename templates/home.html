@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Главная страница</h2>
+<p>Доступные функции:</p>
+<ul>
+    <li><a href="{% url 'login' %}">Авторизация по телефону</a></li>
+    <li><a href="{% url 'user-profile' %}">Профиль пользователя</a> (требует авторизации)</li>
+    <li><a href="/admin/">Админ панель</a></li>
+</ul>
+
+<h3>Быстрые ссылки для тестирования API:</h3>
+<ul>
+    <li><a href="/api/users/auth/request-code/?phone=+79111111111">Запрос кода для +79111111111</a></li>
+    <li><a href="/api/users/auth/request-code/?phone=+79222222222">Запрос кода для +79222222222</a></li>
+</ul>
+{% endblock %}

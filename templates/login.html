@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Авторизация по телефону</h2>
+
+<div id="phone-section">
+    <h3>Шаг 1: Введите номер телефона</h3>
+    <form id="phone-form">
+        <div class="form-group">
+            <input type="tel" id="phone" name="phone" placeholder="+79123456789" required>
+            <button type="submit">Получить код</button>
+        </div>
+    </form>
+</div>
+
+<div id="code-section" style="display:none;">
+    <h3>Шаг 2: Введите код из SMS</h3>
+    <form id="code-form">
+        <div class="form-group">
+            <input type="text" id="code" name="code" placeholder="Введите 4-значный код" required maxlength="4">
+            <button type="submit">Войти</button>
+        </div>
+    </form>
+</div>
+
+<div id="message"></div>
+
+<script>
+document.getElementById('phone-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const phone = document.getElementById('phone').value;
+    
+    fetch(`/api/users/auth/request-code/?phone=${encodeURIComponent(phone)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.code) {
+                document.getElementById('phone-section').style.display = 'none';
+                document.getElementById('code-section').style.display = 'block';
+                showMessage(`Код отправлен: ${data.code}`, 'success');
+            } else {
+                showMessage('Ошибка: ' + (data.error || 'Неизвестная ошибка'), 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('Ошибка сети', 'error');
+        });
+});
+
+document.getElementById('code-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const phone = document.getElementById('phone').value;
+    const code = document.getElementById('code').value;
+    
+    fetch(`/api/users/auth/verify-code/?phone=${encodeURIComponent(phone)}&code=${code}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.message === 'Успешная авторизация') {
+                showMessage(`Успешная авторизация! Ваш инвайт-код: ${data.invite_code}`, 'success');
+                setTimeout(() => {
+                    window.location.href = "{% url 'user-profile' %}";
+                }, 2000);
+            } else {
+                showMessage('Ошибка: ' + (data.error || 'Неверный код'), 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('Ошибка сети', 'error');
+        });
+});
+
+function showMessage(text, type) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = text;
+    messageDiv.className = `message ${type}`;
+    messageDiv.style.display = 'block';
+}
+</script>
+{% endblock %}
