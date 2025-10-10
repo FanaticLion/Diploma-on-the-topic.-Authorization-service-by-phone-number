@@ -12,6 +12,7 @@ from .serializers import (
 )
 import random
 import time
+import json
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import login, authenticate
@@ -188,9 +189,20 @@ def user_profile(request):
             else:
                 return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Иначе возвращаем профиль
-        serializer = ProfileSerializer(user)
-        return Response(serializer.data)
+        # Получаем рефералов пользователя
+        referrals = user.get_referrals()
+
+        # Возвращаем профиль с рефералами
+        return Response({
+            'id': user.id,
+            'phone': user.phone,
+            'invite_code': user.invite_code,
+            'activated_invite_code': user.activated_invite_code,
+            'referrals': [{
+                'phone': referral.phone,
+                'invite_code': referral.invite_code
+            } for referral in referrals]
+        })
 
     elif request.method == 'POST':
         serializer = ActivateInviteCodeSerializer(data=request.data)
@@ -221,5 +233,46 @@ def get_profile_by_phone(request):
                         status=status.HTTP_400_BAD_REQUEST)
 
     user = get_object_or_404(User, phone=phone)
-    serializer = ProfileSerializer(user)
-    return Response(serializer.data)
+
+    # Получаем рефералов пользователя
+    referrals = user.get_referrals()
+
+    return Response({
+        'id': user.id,
+        'phone': user.phone,
+        'invite_code': user.invite_code,
+        'activated_invite_code': user.activated_invite_code,
+        'referrals': [{
+            'phone': referral.phone,
+            'invite_code': referral.invite_code
+        } for referral in referrals]
+    })
+
+
+# Новый эндпоинт для активации инвайт-кода
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@csrf_exempt
+def activate_invite_code(request):
+    try:
+        data = json.loads(request.body)
+        invite_code = data.get('invite_code')
+
+        if not invite_code:
+            return Response({'error': 'Инвайт-код не может быть пустым'}, status=400)
+
+        user = request.user
+
+        # Используем существующий метод активации
+        success, message = user.activate_invite_code(invite_code)
+
+        if success:
+            return Response({
+                'message': message,
+                'activated_invite_code': invite_code
+            })
+        else:
+            return Response({'error': message}, status=400)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)

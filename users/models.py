@@ -3,6 +3,36 @@ from django.db import models
 import random
 import string
 from django.core.validators import RegexValidator
+from django.contrib.auth.models import BaseUserManager
+from django.utils import timezone
+
+
+class UserManager(BaseUserManager):
+    def create_user(self, phone, password=None, **extra_fields):
+        if not phone:
+            raise ValueError('Phone number is required')
+
+        # Автоматически создаем username если не предоставлен
+        if not extra_fields.get('username'):
+            extra_fields['username'] = f"user_{phone}"
+
+        user = self.model(phone=phone, **extra_fields)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, phone, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        if not extra_fields.get('username'):
+            extra_fields['username'] = f"admin_{phone}"
+
+        return self.create_user(phone, password, **extra_fields)
 
 
 class User(AbstractUser):
@@ -22,10 +52,15 @@ class User(AbstractUser):
     activated_invite_code = models.CharField(max_length=6, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    objects = UserManager()
+
+    USERNAME_FIELD = 'phone'
+    REQUIRED_FIELDS = []
+
     def save(self, *args, **kwargs):
         # Генерируем инвайт-код при создании пользователя
         if not self.invite_code:
-            self.generate_invite_code()
+            self.invite_code = self.generate_invite_code()
         super().save(*args, **kwargs)
 
     def generate_invite_code(self):
@@ -35,8 +70,7 @@ class User(AbstractUser):
             code = ''.join(random.choices(characters, k=6))
             # Проверяем уникальность кода
             if not User.objects.filter(invite_code=code).exists():
-                self.invite_code = code
-                break
+                return code
 
     def __str__(self):
         return self.phone if self.phone else self.username
@@ -69,6 +103,10 @@ class User(AbstractUser):
         """Получить список рефералов (кто ввел код этого пользователя)"""
         return User.objects.filter(activated_invite_code=self.invite_code)
 
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+
 
 class AuthCode(models.Model):
     phone = models.CharField(max_length=15)
@@ -79,7 +117,13 @@ class AuthCode(models.Model):
     def __str__(self):
         return f"{self.phone}: {self.code}"
 
+    def is_valid(self):
+        """Проверяет валидность кода (5 минут)"""
+        return (timezone.now() - self.created_at).total_seconds() < 300 and not self.is_used
+
     class Meta:
         indexes = [
             models.Index(fields=['phone', 'created_at']),
         ]
+        verbose_name = 'Код авторизации'
+        verbose_name_plural = 'Коды авторизации'
