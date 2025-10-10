@@ -12,7 +12,6 @@ from .serializers import (
 )
 import random
 import time
-import json
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import login, authenticate
@@ -249,21 +248,17 @@ def get_profile_by_phone(request):
     })
 
 
-# Новый эндпоинт для активации инвайт-кода
+# Новый эндпоинт для активации инвайт-кода - ИСПРАВЛЕННАЯ ВЕРСИЯ
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @csrf_exempt
 def activate_invite_code(request):
-    try:
-        data = json.loads(request.body)
-        invite_code = data.get('invite_code')
+    serializer = ActivateInviteCodeSerializer(data=request.data)
 
-        if not invite_code:
-            return Response({'error': 'Инвайт-код не может быть пустым'}, status=400)
-
+    if serializer.is_valid():
+        invite_code = serializer.validated_data['invite_code']
         user = request.user
 
-        # Используем существующий метод активации
         success, message = user.activate_invite_code(invite_code)
 
         if success:
@@ -274,5 +269,4 @@ def activate_invite_code(request):
         else:
             return Response({'error': message}, status=400)
 
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
+    return Response(serializer.errors, status=400)
