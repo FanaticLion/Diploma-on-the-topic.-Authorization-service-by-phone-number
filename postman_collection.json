@@ -1,0 +1,105 @@
+{
+  "info": {
+    "name": "Referral System API",
+    "description": "API для реферальной системы с авторизацией по номеру телефона",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Request Auth Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+79111111111\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/auth/request-code/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "auth", "request-code", ""]
+            }
+          }
+        },
+        {
+          "name": "Verify Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+79111111111\",\n  \"code\": \"1234\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/auth/verify-code/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "auth", "verify-code", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/profile/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "profile", ""]
+            }
+          }
+        },
+        {
+          "name": "Activate Invite Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invite_code\": \"ABC123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/profile/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "profile", ""]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    }
+  ]
+}

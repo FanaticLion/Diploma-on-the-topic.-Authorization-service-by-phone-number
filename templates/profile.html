@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Профиль пользователя</h2>
+
+<div id="profile-info">
+    <p><strong>Телефон:</strong> <span id="user-phone">Загрузка...</span></p>
+    <p><strong>Ваш инвайт-код:</strong> <span id="user-invite-code">Загрузка...</span></p>
+    <p><strong>Активированный инвайт-код:</strong> <span id="user-activated-code">Загрузка...</span></p>
+</div>
+
+<div id="activate-invite-section" style="display:none;">
+    <h3>Активировать инвайт-код</h3>
+    <form id="activate-invite-form">
+        <div class="form-group">
+            <input type="text" id="invite-code" name="invite_code" placeholder="Введите 6-значный инвайт-код" required maxlength="6">
+            <button type="submit">Активировать</button>
+        </div>
+    </form>
+</div>
+
+<div id="referrals-section">
+    <h3>Ваши рефералы</h3>
+    <ul id="referrals-list"></ul>
+</div>
+
+<div id="message"></div>
+
+<button onclick="location.href='{% url 'login' %}'">Выйти и авторизоваться с другим номером</button>
+
+<script>
+// Загружаем профиль пользователя
+fetch('/api/users/profile/')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Требуется авторизация');
+        }
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById('user-phone').textContent = data.phone;
+        document.getElementById('user-invite-code').textContent = data.invite_code;
+        document.getElementById('user-activated-code').textContent = data.activated_invite_code || 'Не активирован';
+        
+        // Показываем форму активации, если код еще не активирован
+        if (!data.activated_invite_code) {
+            document.getElementById('activate-invite-section').style.display = 'block';
+        }
+        
+        // Показываем рефералов
+        const referralsList = document.getElementById('referrals-list');
+        if (data.referrals && data.referrals.length > 0) {
+            data.referrals.forEach(phone => {
+                const li = document.createElement('li');
+                li.textContent = phone;
+                referralsList.appendChild(li);
+            });
+        } else {
+            referralsList.innerHTML = '<li>Пока нет рефералов</li>';
+        }
+    })
+    .catch(error => {
+        showMessage('Ошибка: ' + error.message + '. Пожалуйста, авторизуйтесь.', 'error');
+        setTimeout(() => {
+            window.location.href = "{% url 'login' %}";
+        }, 3000);
+    });
+
+// Обработка активации инвайт-кода
+document.getElementById('activate-invite-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const inviteCode = document.getElementById('invite-code').value;
+    
+    fetch('/api/users/profile/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ invite_code: inviteCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            showMessage(data.message, 'success');
+            document.getElementById('activate-invite-section').style.display = 'none';
+            document.getElementById('user-activated-code').textContent = inviteCode;
+        } else {
+            showMessage('Ошибка: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        showMessage('Ошибка сети', 'error');
+    });
+});
+
+function showMessage(text, type) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = text;
+    messageDiv.className = `message ${type}`;
+    messageDiv.style.display = 'block';
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
